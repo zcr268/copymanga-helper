@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ☄️拷贝漫画增强☄️
 // @namespace    http://tampermonkey.net/
-// @version      12.3
+// @version      12.4
 // @description  拷贝漫画去广告🚫、加速访问🚀、并排布局📖、图片高度自适应↕️、辅助翻页↔️、页码显示⏱、侧边目录栏📑、暗夜模式🌙、章节评论💬
 // @author       Byaidu
 // @match        *://*.copymanga.com/*
@@ -196,31 +196,30 @@ async function getAesKey(url, isPC, defaultName, fileName) {
 
 async function apiChapters(comic,isPC) {
     const aesKeyName = 'ccz';
-    const headers = {'dnts': '2'};
+    const resultsAesKey = await getAesKey(
+        window.location.origin + '/comic/' + comic,
+        isPC,
+        [aesKeyName]
+        );
+    const dnts = resultsAesKey[1].getElementById('dnt').getAttribute('value');
+    const headers = {'dnts': dnts};
     const request = {
         url: window.location.origin + '/comicdetail/' + comic + '/chapters',
         isPC: isPC,
         headers:headers
     };
-    const results = await Promise.all([
-        getAesKey(
-            window.location.origin + '/comic/' + comic,
-            isPC,
-            [aesKeyName]
-            ),
-        makeRequest(request)
-    ]);
-    let iv = typeof results[1].data === "string"
-            ? JSON.parse(results[1].data).results.substring(0, 16)
-            : results[1].data.results.substring(0, 16),
-        cipher = typeof results[1].data === "string"
-            ? JSON.parse(results[1].data).results.substring(16)
-            : results[1].data.results.substring(16),
+    const results = await makeRequest(request);
+    let iv = typeof results.data === "string"
+            ? JSON.parse(results.data).results.substring(0, 16)
+            : results.data.results.substring(0, 16),
+        cipher = typeof results.data === "string"
+            ? JSON.parse(results.data).results.substring(16)
+            : results.data.results.substring(16),
         result = JSON.parse(CryptoJS.AES.decrypt(
             CryptoJS.enc.Base64.stringify(
                 CryptoJS.enc.Hex.parse(cipher)
             ),
-            CryptoJS.enc.Utf8.parse(results[0][0]),
+            CryptoJS.enc.Utf8.parse(resultsAesKey[0]),
             {
                 'iv': CryptoJS.enc.Utf8.parse(iv),
                 'mode': CryptoJS.mode.CBC,
